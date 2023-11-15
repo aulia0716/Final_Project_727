@@ -1,0 +1,101 @@
+---
+title: "Final Project"
+author: 
+  - Aulia Dini Rafsanjani
+  - Yesdi Calvin
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, comment = FALSE, 
+                      fig.align = "center", out.width = "80%")
+
+# Change to your filepath
+setwd("C:/Users/ASUS/Documents/SURVMETH727_FINAL_PROJECT/Final_Project_727")
+```
+
+```{r packages}
+library(RedditExtractoR)
+library(tidyverse)
+library(lubridate)
+library(qdap)
+library(SentimentAnalysis)
+library(quanteda)
+library(vader)
+library(GGally)
+library(xlsx)
+```
+
+# Introduction
+
+...
+
+# Data collection
+
+```{r find_subreddits}
+#conflict_subreddits <- find_subreddits(keywords = "israel palestine")
+#write.csv(x = conflict_subreddits, file = "conflict_subreddits.csv")
+conflict_subreddits <- read.csv("conflict_subreddits.csv",1)
+```
+
+```{r check_subreddits}
+head(conflict_subreddits)
+n_subreddits <- nrow(conflict_subreddits)
+n_subreddits
+```
+
+```{r}
+# Filter the data frame based on the 'subreddit' column
+#filtered_data <- conflict_subreddits[grep('save|palestine|', conflict_subreddits$subreddit, ignore.case = TRUE), ]
+#subset_data <- conflict_subreddits[conflict_subreddits$subreddit == 'IsraelPalestine', ]
+#subset_data <- conflict_subreddits[conflict_subreddits$subreddit %in% c('Israel', 'Palestine'), ]
+
+# Display the filtered data frame
+#print(filtered_data)
+#print(subset_data)
+```
+We get `r n_subreddits` subreddits related to keyword "israel palestine".
+
+```{r split_subreddits}
+conflict_subreddits1 <- conflict_subreddits[1:(n_subreddits/2), ]
+conflict_subreddits2 <- conflict_subreddits[(n_subreddits/2+1):n_subreddits, ]
+```
+
+```{r find_thread_urls}
+conflict_posts <- data.frame()
+# Substitute "conflict_subreddits1" to "conflict_subreddits2"
+for (sr in conflict_subreddits1$subreddit) {
+  new_post <- find_thread_urls(keywords = "israel palestine", subreddit = sr, period = "week")
+  if (!is.null(ncol(new_post))) {   # If there are any relevant posts
+    conflict_posts <- conflict_posts %>% 
+      bind_rows(new_post)
+  }
+  # Sys.sleep(2)
+}
+conflict_posts <- conflict_posts %>% 
+  drop_na() %>% 
+  distinct() %>% 
+  mutate(collect_time = now("EST"))
+
+date_today <- str_c(str_extract_all(ymd(today("EST")), "\\d")[[1]], collapse = "")
+write.xlsx(x = conflict_posts, 
+          file = paste0("conflict_posts", date_today, ".xlsx"))
+head(conflict_posts)
+```
+
+```{r get_thread_content}
+conflict_content <- get_thread_content(urls = conflict_posts$url)
+
+conflict_threads <- conflict_content$threads
+write.xlsx(x = conflict_threads, 
+          file = paste0("conflict_threads", date_today, ".xlsx"))
+head(conflict_threads)
+
+conflict_comments <- conflict_content$comments
+write.xlsx(x = conflict_comments, 
+          file = paste0("conflict_comments", date_today, ".xlsx"))
+head(conflict_comments)
+```
+
+# Data cleaning and pre-processing
+
